@@ -1,0 +1,19 @@
+extends layout 
+
+block content 
+
+  h1 #{gamecopy.game.title}
+  h3 #{gamecopy.condition} - #{gamecopy.platform}
+  p #{gamecopy.price}
+  div(style='margin-left:20px;margin-top:20px')
+
+    h4 Additional Copies Available 
+
+    dl 
+      each val in gamecopy_list 
+        dt 
+          a(href=val.url) #{val.game.title} for #{val.platform} - #{val.condition}
+        dd #{val.game.summary}
+
+      else 
+        p This game does not have any additional copies available.

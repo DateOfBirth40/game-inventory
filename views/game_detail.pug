@@ -1,0 +1,45 @@
+extends layout 
+
+block content 
+  h1 #{title}
+
+  p #[strong Developer: ]
+    a(href=game.developer.url) #{game.developer.title}
+  p #[strong Publisher: ] #{game.publisher}
+  p #[strong Summary: ]
+    br
+    | #{game.summary}
+  if game.platform.length > 1
+    p #[strong Platforms: ]
+      each val, index in game.platform
+        a(href=val.url) #{val.name}
+        if index < game.platform.length - 1
+          |, 
+  else
+    p #[strong Platform: ]
+      each val, index in game.platform
+        a(href=val.url) #{val.name}
+  p #[strong Release Year: ] #{game.releaseYear}
+  p #[strong Genre: ]
+    each val, index in game.genre 
+      a(href=val.url) #{val.name}
+      if index < game.genre.length - 1
+        |, 
+  
+  div(style="margin-left:20px;margin-top:20px")
+    h4 Available Copies 
+
+    each val in game_copies 
+      hr
+      p #{val.condition} - #{val.platform}
+      p #[strong #{val.price}]
+    else 
+      p There are no available copies of this game.
+
+  hr
+  p
+    a(href=game.url+'/delete') Delete Game
+  p
+    a(href=game.url+'/update') Update Game
+
+  

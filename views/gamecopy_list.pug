@@ -1,0 +1,11 @@
+extends layout 
+
+block content 
+  h1= title 
+
+  ul 
+    each val in gamecopy_list 
+      li 
+        a(href=val.url) #{val.game.title} - #{val.condition} (#{val.platform})
+    else 
+      li There are no game copies available for this title.

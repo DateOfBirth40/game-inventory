@@ -1,0 +1,31 @@
+extends layout 
+
+block content 
+
+  h1 Developer: #{developer.title}
+  h5 About:
+  br
+  p #{developer.summary}
+  h5 Headquarters: 
+  br
+  p #{developer.location}
+  h5 Founded: 
+  br
+  p #{developer.founded}
+
+  div(style='margin-left:20px;margin-top:20px')
+
+    h4 Games 
+
+    dl 
+      each game in developer_games 
+        dt 
+          a(href=game.url) #{game.title}
+        dd #{game.summary}
+
+      else 
+        p This developer does not have any available games.
+    
+  hr
+  p 
+    a(href=developer.url+'/delete') Delete developer
