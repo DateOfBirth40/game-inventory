@@ -1,6 +1,7 @@
 const Platform = require("../models/platform");
 const Game = require("../models/game");
 const asyncHandler = require("express-async-handler");
+const { body, validationResult } = require("express-validator");
 
 // Display list of all platform.
 exports.platform_list = asyncHandler(async (req, res, next) => {
@@ -37,13 +38,43 @@ exports.platform_detail = asyncHandler(async (req, res, next) => {
 
 // Display platform create form on GET.
 exports.platform_create_get = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: platform create GET");
+  res.render("platform_form", { title: "Create Platform" });
 });
 
 // Handle platform create on POST.
-exports.platform_create_post = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: platform create POST");
-});
+exports.platform_create_post = [
+  // Validate and sanitize the name field
+  body("name", "Platform must contain at least 2 characters")
+    .trim()
+    .isLength({ min: 2 })
+    .escape(),
+  // Process request after validation and sanitization
+  asyncHandler(async (req, res, next) => {
+    // Extract the validation errors from a request
+    const errors = validationResult(req);
+    // Create a platform object with escaped and trimmed data
+    const platform = new Platform({ name: req.body.name });
+    if (!errors.isEmpty()) {
+      // There are errors; render the form again with sanitized values/error messages
+      res.render("platform_form", {
+        title: "Create Platform",
+        platform: platform,
+        errors: errors.array(),
+      });
+    } else {
+      // Data is valid; check if platform with same name already exists
+      const platformExists = await Platform.findOne({ name: req.body.name })
+        .collation({ locale: "en", strength: 2 })
+        .exec();
+      if (platformExists) {
+        res.redirect(platformExists.url);
+      } else {
+        await platform.save();
+        res.redirect(platform.url);
+      }
+    }
+  }),
+];
 
 // Display platform delete form on GET.
 exports.platform_delete_get = asyncHandler(async (req, res, next) => {

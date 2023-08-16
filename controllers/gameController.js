@@ -4,6 +4,7 @@ const Genre = require("../models/genre");
 const Platform = require("../models/platform");
 const GameCopy = require("../models/gameCopy");
 const asyncHandler = require("express-async-handler");
+const { body, validationResult } = require("express-validator");
 
 exports.index = asyncHandler(async (req, res, next) => {
   // Get details of games, game copies, developers, platform, and genre counts
@@ -71,13 +72,104 @@ exports.game_detail = asyncHandler(async (req, res, next) => {
 
 // Display game create form on GET.
 exports.game_create_get = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: game create GET");
+  // Get all developers and genres, which we can use for adding to our game
+  const [allDevelopers, allPlatforms, allGenres] = await Promise.all([
+    Developer.find().exec(),
+    Platform.find().exec(),
+    Genre.find().exec(),
+  ]);
+
+  res.render("game_form", {
+    title: "Create Game",
+    developers: allDevelopers,
+    platforms: allPlatforms,
+    genres: allGenres,
+  });
 });
 
 // Handle game create on POST.
-exports.game_create_post = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: game create POST");
-});
+exports.game_create_post = [
+  // Convert the genre and platform to an array
+  (req, res, next) => {
+    if (!(req.body.genre instanceof Array)) {
+      if (typeof req.body.genre === "undefined") req.body.genre = [];
+      else req.body.genre = new Array(req.body.genre);
+    }
+    next();
+  },
+  (req, res, next) => {
+    if (!(req.body.platform instanceof Array)) {
+      if (typeof req.body.platform === "undefined") req.body.platform = [];
+      else req.body.platform = new Array(req.body.platform);
+    }
+    next();
+  },
+  // Validate and sanitize the fields
+  body("title", "Title must not be empty").trim().isLength({ min: 1 }).escape(),
+  body("developer", "Developer must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("publisher", "Publisher must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("summary", "Summary must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("releaseYear", "Release year must not be empty")
+    .trim()
+    .isLength({ min: 4, max: 4 })
+    .escape(),
+  body("genre.*").escape(),
+  body("platform.*").escape(),
+  // Process request after validation and sanitization
+  asyncHandler(async (req, res, next) => {
+    const errors = validationResult(req);
+    // Create a Game object with escaped and trimmed data
+    const game = new Game({
+      title: req.body.title,
+      developer: req.body.developer,
+      publisher: req.body.publisher,
+      summary: req.body.summary,
+      platform: req.body.platform,
+      releaseYear: req.body.releaseYear,
+      genre: req.body.genre,
+    });
+    if (!errors.isEmpty()) {
+      const [allDevelopers, allPlatforms, allGenres] = await Promise.all([
+        Developer.find().exec(),
+        Platform.find().exec(),
+        Genre.find().exec(),
+      ]);
+      // Mark our selected genres as checked
+      for (const genre of allGenres) {
+        if (game.genre.includes(genre._id)) {
+          genre.checked = "true";
+        }
+      }
+      // Mark our selected platforms as checked
+      for (const platform of allPlatforms) {
+        if (game.platform.includes(platform._id)) {
+          platform.checked = "true";
+        }
+      }
+
+      res.render("game_form", {
+        title: "Create Game",
+        developers: allDevelopers,
+        platforms: allPlatforms,
+        genres: allGenres,
+        game: game,
+        errors: errors.array(),
+      });
+    } else {
+      await game.save();
+      res.redirect(game.url);
+    }
+  }),
+];
 
 // Display game delete form on GET.
 exports.game_delete_get = asyncHandler(async (req, res, next) => {
@@ -91,10 +183,115 @@ exports.game_delete_post = asyncHandler(async (req, res, next) => {
 
 // Display game update form on GET.
 exports.game_update_get = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: game update GET");
+  const [game, allDevelopers, allGenres] = await Promise.all([
+    Game.findById(req.params.id).populate("developer").populate("genre").exec(),
+    Developer.find().exec(),
+    Genre.find().exec(),
+  ]);
+  if (game === null) {
+    const err = new Error("Game not found");
+    err.status = 404;
+    return next(err);
+  }
+  for (const genre of allGenres) {
+    for (const game_g of game.genre) {
+      if (genre._id.toString() === game_g._id.toString()) {
+        genre.checked = "true";
+      }
+    }
+  }
+
+  res.render("game_form", {
+    title: "Update Game",
+    developers: allDevelopers,
+    genres: allGenres,
+    game: game,
+  });
 });
 
 // Handle game update on POST.
-exports.game_update_post = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: game update POST");
-});
+exports.game_update_post = [
+  // Convert the genre and platform to an array
+  (req, res, next) => {
+    if (!(req.body.genre instanceof Array)) {
+      if (typeof req.body.genre === "undefined") req.body.genre = [];
+      else req.body.genre = new Array(req.body.genre);
+    }
+    next();
+  },
+  (req, res, next) => {
+    if (!(req.body.platform instanceof Array)) {
+      if (typeof req.body.platform === "undefined") req.body.platform = [];
+      else req.body.platform = new Array(req.body.platform);
+    }
+    next();
+  },
+  // Validate and sanitize the fields
+  body("title", "Title must not be empty").trim().isLength({ min: 1 }).escape(),
+  body("developer", "Developer must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("publisher", "Publisher must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("summary", "Summary must not be empty")
+    .trim()
+    .isLength({ min: 1 })
+    .escape(),
+  body("releaseYear", "Release year must not be empty")
+    .trim()
+    .isLength({ min: 4, max: 4 })
+    .escape(),
+  body("genre.*").escape(),
+  body("platform.*").escape(),
+  // Process request after validation and sanitization
+  asyncHandler(async (req, res, next) => {
+    const errors = validationResult(req);
+    // Create a Game object with escaped and trimmed data
+    const game = new Game({
+      title: req.body.title,
+      developer: req.body.developer,
+      publisher: req.body.publisher,
+      summary: req.body.summary,
+      platform:
+        typeof req.body.platform === "undefined" ? [] : req.body.platform,
+      releaseYear: req.body.releaseYear,
+      genre: typeof req.body.genre === "undefined" ? [] : req.body.genre,
+      _id: req.params.id,
+    });
+    if (!errors.isEmpty()) {
+      const [allDevelopers, allPlatforms, allGenres] = await Promise.all([
+        Developer.find().exec(),
+        Platform.find().exec(),
+        Genre.find().exec(),
+      ]);
+      // Mark our selected genres as checked
+      for (const genre of allGenres) {
+        if (game.genre.includes(genre._id)) {
+          genre.checked = "true";
+        }
+      }
+      // Mark our selected platforms as checked
+      for (const platform of allPlatforms) {
+        if (game.platform.includes(platform._id)) {
+          platform.checked = "true";
+        }
+      }
+
+      res.render("game_form", {
+        title: "Create Game",
+        developers: allDevelopers,
+        platforms: allPlatforms,
+        genres: allGenres,
+        game: game,
+        errors: errors.array(),
+      });
+      return;
+    } else {
+      const updatedGame = await Game.findByIdAndUpdate(req.params.id, game, {});
+      res.redirect(updatedGame.url);
+    }
+  }),
+];
